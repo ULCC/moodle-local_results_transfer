@@ -38,7 +38,7 @@ if ($hassiteconfig) {
 
     $settings->add(new admin_setting_configtext('local_results_transfer/source_to_read',
         get_string('source_to_read', 'local_results_transfer'), '',
-        'mis.published_TestComponentOfferingAssociationStudentResults', PARAM_TEXT));
+        'mis.exported_DLEMarks', PARAM_TEXT));
     $settings->add(new admin_setting_configtext('local_results_transfer/source_to_update',
         get_string('source_to_update', 'local_results_transfer'), '', 'mis.exported_DLEMarks', PARAM_TEXT));
     $settings->add(new admin_setting_configtext('local_results_transfer/source_field_id',
@@ -47,24 +47,15 @@ if ($hassiteconfig) {
         get_string('source_field_transferred', 'local_results_transfer'), '', 'status', PARAM_TEXT));
     $settings->add(new admin_setting_configtext('local_results_transfer/source_log_field',
         get_string('source_log_field', 'local_results_transfer'),
-        get_string('source_log_field_desc', 'local_results_transfer'), 'associationId', PARAM_TEXT));
+        get_string('source_log_field_desc', 'local_results_transfer'), 'srs_assessment_element_id', PARAM_TEXT));
 
     $defaultparams = implode("\n", [
-        'associationId',
-        'role',
-        'startDateTime',
-        'expectedEndDateTime',
-        'actualEndDateTime',
-        'state',
-        'attempt',
-        'testComponentOfferingId',
-        'personId',
-        'resultState',
-        'resultPass',
-        'resultScore',
-        'resultDateTime',
-        'otherCodesSPR',
-        'otherCodesSubmissionState',
+        'srs_course_id',
+        'srs_assessment_element_id',
+        'srs_student_id',
+        'mdl_grade_scale',
+        'mdl_grade',
+        'mdl_dn',
     ]);
     $settings->add(new admin_setting_configtextarea('local_results_transfer/procedure_parameter_fields',
         get_string('procedure_parameter_fields', 'local_results_transfer'),

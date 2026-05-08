@@ -34,29 +34,23 @@ For MySQL source testing, rows are selected when the configured status/transferr
 0 OR '0' OR NULL OR ''
 ```
 
-## Local MySQL testing
+## Default local MySQL testing schema
 
-For a 15-field mock test, configure `procedure_parameter_fields` as one field per line:
+Fresh install defaults are aligned to the currently known `mis.exported_DLEMarks` sample schema.
+
+Default source/update table:
 
 ```text
-associationId
-role
-startDateTime
-expectedEndDateTime
-actualEndDateTime
-state
-attempt
-testComponentOfferingId
-personId
-resultState
-resultPass
-resultScore
-resultDateTime
-otherCodesSPR
-otherCodesSubmissionState
+mis.exported_DLEMarks
 ```
 
-For an older/simple table test, configure it as needed, for example:
+Default log reference field:
+
+```text
+srs_assessment_element_id
+```
+
+Default `procedure_parameter_fields` value:
 
 ```text
 srs_course_id
@@ -67,4 +61,8 @@ mdl_grade
 mdl_dn
 ```
 
-The configured procedure signature must match the same order and count, followed by an OUT status parameter.
+The configured stored procedure signature must match the same order and count, followed by one OUT status parameter.
+
+## Using a different schema
+
+If the final source view uses a different shape, update the admin settings instead of changing code. For example, a SURF-style source view can be used by setting `source_to_read` to that view and replacing `procedure_parameter_fields` with the source columns in the exact order expected by the procedure.
