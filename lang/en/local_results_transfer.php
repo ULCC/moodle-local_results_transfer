@@ -44,3 +44,24 @@ $string['remote_procedure_db_user'] = 'Remote procedure DB user';
 $string['remote_procedure_db_pass'] = 'Remote procedure DB password';
 $string['remote_procedure_db_setupsql'] = 'Remote procedure DB setup SQL';
 $string['remote_procedure'] = 'Remote procedure name';
+
+
+
+$string['mappingpage'] = 'Results Transfer field mapping';
+$string['mappingpage_desc'] = 'Configure stored procedure parameters dynamically. Row order controls the order in which values are passed to the stored procedure.';
+$string['mappinginstructions'] = 'Add one row per stored procedure parameter. For input parameters, enter the source table column name. For output parameters, leave source column blank. The row order controls the stored procedure parameter order.';
+$string['mappingsaved'] = 'Field mapping saved.';
+$string['direction'] = 'Direction';
+$string['inputparam'] = 'Input';
+$string['outputparam'] = 'Output';
+$string['parametername'] = 'Stored procedure parameter name';
+$string['sourcecolumn'] = 'Source column';
+$string['datatype'] = 'Data type';
+$string['mappingrownote'] = 'Input rows require a source column. Output rows do not.';
+$string['addmoreparameters'] = 'Add more parameters';
+$string['sourcecolumnrequired'] = 'Source column is required for input parameters.';
+$string['atleastoneinputrequired'] = 'At least one input parameter is required.';
+$string['atleastoneoutputrequired'] = 'At least one output parameter is required.';
+$string['sortorder'] = 'Order';
+$string['sortorderrequired'] = 'Sort Order required';
+$string['sortorderduplicate'] = 'Duplicate Sort Order';

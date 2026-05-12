@@ -83,3 +83,10 @@ if ($hassiteconfig) {
     $settings->add(new admin_setting_configtext('local_results_transfer/remote_procedure',
         get_string('remote_procedure', 'local_results_transfer'), '', '', PARAM_TEXT));
 }
+
+$ADMIN->add('localplugins', new admin_externalpage(
+    'local_results_transfer_mapping',
+    get_string('mappingpage', 'local_results_transfer'),
+    new moodle_url('/local/results_transfer/mapping.php'),
+    'moodle/site:config'
+));
