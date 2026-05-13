@@ -38,24 +38,35 @@ if ($hassiteconfig) {
 
     $settings->add(new admin_setting_configtext('local_results_transfer/source_to_read',
         get_string('source_to_read', 'local_results_transfer'), '',
-        'mis.exported_DLEMarks', PARAM_TEXT));
+        'mis.published_TestComponentAssociationStudentResults', PARAM_TEXT));
     $settings->add(new admin_setting_configtext('local_results_transfer/source_to_update',
-        get_string('source_to_update', 'local_results_transfer'), '', 'mis.exported_DLEMarks', PARAM_TEXT));
+        get_string('source_to_update', 'local_results_transfer'), '', 'mis.exported_grades', PARAM_TEXT));
     $settings->add(new admin_setting_configtext('local_results_transfer/source_field_id',
         get_string('source_field_id', 'local_results_transfer'), '', 'id', PARAM_TEXT));
     $settings->add(new admin_setting_configtext('local_results_transfer/source_field_transferred',
-        get_string('source_field_transferred', 'local_results_transfer'), '', 'status', PARAM_TEXT));
+        get_string('source_field_transferred', 'local_results_transfer'), '', 'grade_transferred', PARAM_TEXT));
+    $settings->add(new admin_setting_configselect('local_results_transfer/source_transfer_field_type',
+        get_string('source_transfer_field_type', 'local_results_transfer'),
+        get_string('source_transfer_field_type_desc', 'local_results_transfer'), 'datetime',
+        ['numeric' => get_string('transfer_field_type_numeric', 'local_results_transfer'),
+         'datetime' => get_string('transfer_field_type_datetime', 'local_results_transfer')]));
     $settings->add(new admin_setting_configtext('local_results_transfer/source_log_field',
         get_string('source_log_field', 'local_results_transfer'),
-        get_string('source_log_field_desc', 'local_results_transfer'), 'srs_assessment_element_id', PARAM_TEXT));
+        get_string('source_log_field_desc', 'local_results_transfer'), 'associationId', PARAM_TEXT));
 
     $defaultparams = implode("\n", [
-        'srs_course_id',
-        'srs_assessment_element_id',
-        'srs_student_id',
-        'mdl_grade_scale',
-        'mdl_grade',
-        'mdl_dn',
+        'associationId',
+        'role',
+        'state',
+        'attempt',
+        'testComponentOfferingId',
+        'personId',
+        'resultState',
+        'resultPass',
+        'resultScore',
+        'resultDateTime',
+        'otherCodesSPR',
+        'otherCodesSubmissionState',
     ]);
     $settings->add(new admin_setting_configtextarea('local_results_transfer/procedure_parameter_fields',
         get_string('procedure_parameter_fields', 'local_results_transfer'),
@@ -81,12 +92,15 @@ if ($hassiteconfig) {
     $settings->add(new admin_setting_configtextarea('local_results_transfer/remote_procedure_db_setupsql',
         get_string('remote_procedure_db_setupsql', 'local_results_transfer'), '', '', PARAM_RAW));
     $settings->add(new admin_setting_configtext('local_results_transfer/remote_procedure',
-        get_string('remote_procedure', 'local_results_transfer'), '', '', PARAM_TEXT));
-}
+        get_string('remote_procedure', 'local_results_transfer'), '', 'insertTestComponentOfferingAssociationStudentResult', PARAM_TEXT));
+    $settings->add(new admin_setting_configtext('local_results_transfer/remote_procedure_success_value',
+        get_string('remote_procedure_success_value', 'local_results_transfer'),
+        get_string('remote_procedure_success_value_desc', 'local_results_transfer'), 'SUCCESS', PARAM_TEXT));
 
-$ADMIN->add('localplugins', new admin_externalpage(
-    'local_results_transfer_mapping',
-    get_string('mappingpage', 'local_results_transfer'),
-    new moodle_url('/local/results_transfer/mapping.php'),
-    'moodle/site:config'
-));
+    $ADMIN->add('localplugins', new admin_externalpage(
+        'local_results_transfer_mapping',
+        get_string('mappingpage', 'local_results_transfer'),
+        new moodle_url('/local/results_transfer/mapping.php'),
+        'moodle/site:config'
+    ));
+}

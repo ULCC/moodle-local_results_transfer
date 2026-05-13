@@ -67,13 +67,23 @@ class mysqli_source_driver implements driver_interface {
      * @param string $transferredfield Transferred field.
      * @return \Generator
      */
-    public function fetch_untransferred(string $table, string $idfield, string $transferredfield): \Generator {
+    public function fetch_untransferred(string $table, string $idfield, string $transferredfield, string $transfertype = 'numeric'): \Generator {
         $this->require_connection();
         $table = self::quote_identifier_path($table);
         $idfield = self::quote_identifier($idfield);
         $transferredfield = self::quote_identifier($transferredfield);
 
-        $sql = "SELECT * FROM {$table} WHERE ({$transferredfield} = 0 OR {$transferredfield} = '0' OR {$transferredfield} IS NULL OR {$transferredfield} = '') ORDER BY {$idfield}";
+        if ($transfertype === 'datetime') {
+            $where = "({$transferredfield} IS NULL OR {$transferredfield} = '' " .
+                "OR {$transferredfield} = '0000-00-00 00:00:00' " .
+                "OR {$transferredfield} = '1970-01-01 00:00:00' " .
+                "OR {$transferredfield} = '1970-01-01 01:00:00')";
+        } else {
+            $where = "({$transferredfield} = 0 OR {$transferredfield} = '0' " .
+                "OR {$transferredfield} IS NULL OR {$transferredfield} = '')";
+        }
+
+        $sql = "SELECT * FROM {$table} WHERE {$where} ORDER BY {$idfield}";
         $result = $this->conn->query($sql);
         try {
             while ($row = $result->fetch_object()) {
@@ -143,13 +153,14 @@ class mysqli_source_driver implements driver_interface {
      * @param mixed $idvalue ID value.
      * @param string $transferredfield Transferred field.
      */
-    public function mark_transferred(string $table, string $idfield, $idvalue, string $transferredfield): void {
+    public function mark_transferred(string $table, string $idfield, $idvalue, string $transferredfield, string $transfertype = 'numeric'): void {
         $this->require_connection();
         $table = self::quote_identifier_path($table);
         $idfield = self::quote_identifier($idfield);
         $transferredfield = self::quote_identifier($transferredfield);
 
-        $stmt = $this->conn->prepare("UPDATE {$table} SET {$transferredfield} = UNIX_TIMESTAMP(NOW()) WHERE {$idfield} = ?");
+        $stamp = ($transfertype === 'datetime') ? 'NOW()' : 'UNIX_TIMESTAMP(NOW())';
+        $stmt = $this->conn->prepare("UPDATE {$table} SET {$transferredfield} = {$stamp} WHERE {$idfield} = ?");
         $id = (string)$idvalue;
         $stmt->bind_param('s', $id);
         $stmt->execute();

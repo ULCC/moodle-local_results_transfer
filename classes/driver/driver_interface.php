@@ -36,9 +36,10 @@ interface driver_interface {
      * @param string $table Table or view name.
      * @param string $idfield ID field name.
      * @param string $transferredfield Transferred/status field name.
+     * @param string $transfertype Transfer field type: numeric or datetime.
      * @return \Generator
      */
-    public function fetch_untransferred(string $table, string $idfield, string $transferredfield): \Generator;
+    public function fetch_untransferred(string $table, string $idfield, string $transferredfield, string $transfertype = 'numeric'): \Generator;
 
     /**
      * Call stored procedure and return output status.
@@ -56,6 +57,7 @@ interface driver_interface {
      * @param string $idfield ID field name.
      * @param mixed $idvalue ID value.
      * @param string $transferredfield Transferred/status field name.
+     * @param string $transfertype Transfer field type: numeric or datetime.
      */
-    public function mark_transferred(string $table, string $idfield, $idvalue, string $transferredfield): void;
+    public function mark_transferred(string $table, string $idfield, $idvalue, string $transferredfield, string $transfertype = 'numeric'): void;
 }

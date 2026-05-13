@@ -82,7 +82,7 @@ class sqlsrv_target_driver implements driver_interface {
      * @param string $transferredfield Transferred field.
      * @return \Generator
      */
-    public function fetch_untransferred(string $table, string $idfield, string $transferredfield): \Generator {
+    public function fetch_untransferred(string $table, string $idfield, string $transferredfield, string $transfertype = 'numeric'): \Generator {
         throw new \moodle_exception('fetch_untransferred is not implemented for sqlsrv target driver.');
         yield;
     }
@@ -136,7 +136,7 @@ class sqlsrv_target_driver implements driver_interface {
      * @param mixed $idvalue ID value.
      * @param string $transferredfield Transferred field.
      */
-    public function mark_transferred(string $table, string $idfield, $idvalue, string $transferredfield): void {
+    public function mark_transferred(string $table, string $idfield, $idvalue, string $transferredfield, string $transfertype = 'numeric'): void {
         throw new \moodle_exception('mark_transferred is not implemented for sqlsrv target driver.');
     }
 

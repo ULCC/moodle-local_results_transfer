@@ -35,6 +35,8 @@ class transfer_task extends \core\task\scheduled_task {
         $target = null;
         $success = 0;
         $failed = 0;
+        $mapping = $this->configured_parameter_mapping($cfg);
+        $successvalue = trim((string)($cfg->remote_procedure_success_value ?? 'SUCCESS'));
 
         try {
             $source = driver_factory::create((string)$cfg->source_db_type);
@@ -68,7 +70,8 @@ class transfer_task extends \core\task\scheduled_task {
                 $rows = iterator_to_array($source->fetch_untransferred(
                     (string)$cfg->source_to_read,
                     (string)$cfg->source_field_id,
-                    (string)$cfg->source_field_transferred
+                    (string)$cfg->source_field_transferred,
+                    (string)($cfg->source_transfer_field_type ?? 'numeric')
                 ));
             } catch (\Throwable $e) {
                 mtrace('Select from source failed: ' . $e->getMessage());
@@ -82,16 +85,17 @@ class transfer_task extends \core\task\scheduled_task {
                 $logref = '';
                 try {
                     $logref = $this->row_log_reference($row, $cfg);
-                    $params = $this->build_in_params($row, $cfg);
+                    $params = $this->build_in_params($row, $mapping);
                     $status = $target->call_procedure((string)$cfg->remote_procedure, $params);
 
-                    if ((string)$status === '0') {
+                    if (strcasecmp(trim((string)$status), $successvalue) === 0) {
                         try {
                             $source->mark_transferred(
                                 (string)$cfg->source_to_update,
                                 (string)$cfg->source_field_id,
                                 $id,
-                                (string)$cfg->source_field_transferred
+                                (string)$cfg->source_field_transferred,
+                                (string)($cfg->source_transfer_field_type ?? 'numeric')
                             );
                             $success++;
                             mtrace('OK row id=' . $id . $logref . ' status=' . $status);
@@ -136,9 +140,9 @@ class transfer_task extends \core\task\scheduled_task {
         $required = [
             'source_db_type', 'source_db_host', 'source_db_name', 'source_db_user',
             'source_to_read', 'source_to_update', 'source_field_id', 'source_field_transferred',
-            'procedure_parameter_fields', 'transfer_method', 'remote_procedure_db_type',
-            'remote_procedure_db_host', 'remote_procedure_db_name', 'remote_procedure_db_user',
-            'remote_procedure',
+            'transfer_method', 'remote_procedure_db_type', 'remote_procedure_db_host',
+            'remote_procedure_db_name', 'remote_procedure_db_user', 'remote_procedure',
+            'source_transfer_field_type', 'remote_procedure_success_value',
         ];
 
         foreach ($required as $name) {
@@ -185,26 +189,82 @@ class transfer_task extends \core\task\scheduled_task {
     }
 
     /**
-     * Build ordered SP input parameters from row using the configured field list.
+     * Build ordered SP input parameters from row using the configured mapping.
      *
      * @param \stdClass $row Source row.
-     * @param \stdClass $cfg Plugin config.
+     * @param array $mapping Mapping rows.
      * @return array
      */
-    private function build_in_params(\stdClass $row, \stdClass $cfg): array {
-        $fields = $this->configured_parameter_fields((string)$cfg->procedure_parameter_fields);
-
+    private function build_in_params(\stdClass $row, array $mapping): array {
         $params = [];
-        foreach ($fields as $field) {
-            $params[] = $this->row_value($row, $field);
+
+        foreach ($mapping as $map) {
+            if (($map['direction'] ?? 'in') !== 'in') {
+                continue;
+            }
+
+            $sourcecolumn = trim((string)($map['source_column'] ?? ''));
+            if ($sourcecolumn === '') {
+                throw new \moodle_exception('Input parameter has no source column configured: ' . s($map['param_name'] ?? ''));
+            }
+
+            $params[] = $this->row_value($row, $sourcecolumn);
         }
+
+        if (empty($params)) {
+            throw new \moodle_exception('No input parameters configured for procedure call.');
+        }
+
         return $params;
     }
 
     /**
-     * Parse the ordered parameter field setting.
+     * Read mapping rows from JSON config, falling back to legacy textarea.
      *
-     * Supports one field per line and/or comma-separated values.
+     * @param \stdClass $cfg Plugin config.
+     * @return array
+     */
+    private function configured_parameter_mapping(\stdClass $cfg): array {
+        $json = trim((string)($cfg->procedure_parameters_json ?? ''));
+
+        if ($json !== '') {
+            $rows = json_decode($json, true);
+            if (!is_array($rows)) {
+                throw new \moodle_exception('Invalid procedure parameter mapping JSON.');
+            }
+
+            usort($rows, static function(array $a, array $b): int {
+                return (($a['sortorder'] ?? 0) <=> ($b['sortorder'] ?? 0));
+            });
+
+            return $rows;
+        }
+
+        // Legacy fallback for existing installs using the old ordered textarea.
+        $fields = $this->configured_parameter_fields((string)($cfg->procedure_parameter_fields ?? ''));
+        $rows = [];
+        foreach ($fields as $index => $field) {
+            $rows[] = [
+                'sortorder' => $index + 1,
+                'direction' => 'in',
+                'param_name' => $field,
+                'source_column' => $field,
+                'data_type' => 'nvarchar',
+            ];
+        }
+        $rows[] = [
+            'sortorder' => count($rows) + 1,
+            'direction' => 'out',
+            'param_name' => 'STATUS',
+            'source_column' => '',
+            'data_type' => 'nvarchar',
+        ];
+
+        return $rows;
+    }
+
+    /**
+     * Parse the legacy ordered parameter field setting.
      *
      * @param string $setting Raw setting value.
      * @return array
