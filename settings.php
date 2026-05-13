@@ -96,11 +96,34 @@ if ($hassiteconfig) {
     $settings->add(new admin_setting_configtext('local_results_transfer/remote_procedure_success_value',
         get_string('remote_procedure_success_value', 'local_results_transfer'),
         get_string('remote_procedure_success_value_desc', 'local_results_transfer'), 'SUCCESS', PARAM_TEXT));
-
-    $ADMIN->add('localplugins', new admin_externalpage(
-        'local_results_transfer_mapping',
-        get_string('mappingpage', 'local_results_transfer'),
-        new moodle_url('/local/results_transfer/mapping.php'),
-        'moodle/site:config'
-    ));
 }
+
+$mappingurl = new moodle_url('/local/results_transfer/mapping.php');
+
+$mappingbutton = html_writer::div(
+    html_writer::link(
+        $mappingurl,
+        get_string('openmappingpage', 'local_results_transfer'),
+        [
+            'class' => 'btn btn-primary',
+        ]
+    ),
+    'local-results-transfer-mapping-button',
+    [
+        'style' => 'margin-left: 390px; margin-top: 12px; margin-bottom: 25px;',
+    ]
+);
+
+$settings->add(new admin_setting_heading(
+    'local_results_transfer/mappinglink',
+    get_string('mappingpage', 'local_results_transfer'),
+    $mappingbutton
+));
+
+$ADMIN->add('localplugins', new admin_externalpage(
+    'local_results_transfer_mapping',
+    get_string('mappingpage', 'local_results_transfer'),
+    new moodle_url('/local/results_transfer/mapping.php'),
+    'moodle/site:config',
+    true
+));

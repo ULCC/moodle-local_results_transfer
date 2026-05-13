@@ -69,3 +69,5 @@ $string['atleastoneinputrequired'] = 'At least one input parameter is required.'
 $string['atleastoneoutputrequired'] = 'At least one output parameter is required.';
 $string['sortorderrequired'] = 'Order must be greater than zero.';
 $string['sortorderduplicate'] = 'Each parameter row must have a unique order.';
+
+$string['openmappingpage'] = 'Open field mapping configuration';
