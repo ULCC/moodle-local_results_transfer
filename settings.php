@@ -78,7 +78,7 @@ if ($hassiteconfig) {
     $settings->add(new admin_setting_configselect('local_results_transfer/transfer_method',
         get_string('transfer_method', 'local_results_transfer'), '', 'remote_procedure', ['remote_procedure' => 'remote_procedure']));
     $settings->add(new admin_setting_configselect('local_results_transfer/remote_procedure_db_type',
-        get_string('remote_procedure_db_type', 'local_results_transfer'), '', 'sqlsrv', ['sqlsrv' => 'sqlsrv', 'mysqli' => 'mysqli']));
+        get_string('remote_procedure_db_type', 'local_results_transfer'), '', 'odbc', ['sqlsrv' => 'sqlsrv', 'mysqli' => 'mysqli', 'odbc' => 'odbc']));
     $settings->add(new admin_setting_configtext('local_results_transfer/remote_procedure_db_host',
         get_string('remote_procedure_db_host', 'local_results_transfer'), '', '', PARAM_TEXT));
     $settings->add(new admin_setting_configtext('local_results_transfer/remote_procedure_db_port',

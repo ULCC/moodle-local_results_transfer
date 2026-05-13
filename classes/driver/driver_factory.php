@@ -3,6 +3,8 @@
 
 namespace local_results_transfer\driver;
 
+defined('MOODLE_INTERNAL') || die();
+
 /**
  * Driver factory.
  *
@@ -18,12 +20,20 @@ class driver_factory {
      * @return driver_interface
      */
     public static function create(string $type): driver_interface {
+        $type = strtolower(trim($type));
+
         if ($type === 'mysqli') {
             return new mysqli_source_driver();
         }
+
         if ($type === 'sqlsrv') {
             return new sqlsrv_target_driver();
         }
+
+        if ($type === 'odbc') {
+            return new odbc_target_driver();
+        }
+
         throw new \moodle_exception('Unsupported driver type: ' . s($type));
     }
 }
