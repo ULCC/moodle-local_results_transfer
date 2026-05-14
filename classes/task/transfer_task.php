@@ -36,6 +36,7 @@ class transfer_task extends \core\task\scheduled_task {
         $success = 0;
         $failed = 0;
         $mapping = $this->configured_parameter_mapping($cfg);
+        $outparam = $this->configured_output_parameter($mapping);
         $successvalue = trim((string)($cfg->remote_procedure_success_value ?? 'SUCCESS'));
 
         try {
@@ -83,26 +84,27 @@ class transfer_task extends \core\task\scheduled_task {
             foreach ($rows as $row) {
                 $id = $this->row_value($row, (string)$cfg->source_field_id);
                 $logref = '';
+
                 try {
                     $logref = $this->row_log_reference($row, $cfg);
                     $params = $this->build_in_params($row, $mapping);
-                    $status = $target->call_procedure((string)$cfg->remote_procedure, $params);
 
-                    if (strcasecmp(trim((string)$status), $successvalue) === 0) {
-                        try {
-                            $source->mark_transferred(
-                                (string)$cfg->source_to_update,
-                                (string)$cfg->source_field_id,
-                                $id,
-                                (string)$cfg->source_field_transferred,
-                                (string)($cfg->source_transfer_field_type ?? 'numeric')
-                            );
-                            $success++;
-                            mtrace('OK row id=' . $id . $logref . ' status=' . $status);
-                        } catch (\Throwable $e) {
-                            $failed++;
-                            mtrace('FAIL row id=' . $id . $logref . ' status=' . $status . ' update_error=' . $e->getMessage());
-                        }
+                    if ((string)$cfg->remote_procedure_db_type === 'odbc') {
+                        $status = $target->call_procedure((string)$cfg->remote_procedure, $params, $outparam);
+                    } else {
+                        $status = $target->call_procedure((string)$cfg->remote_procedure, $params);
+                    }
+
+                    if (trim((string)$status) === $successvalue) {
+                        $source->mark_transferred(
+                            (string)$cfg->source_to_update,
+                            (string)$cfg->source_field_id,
+                            $id,
+                            (string)$cfg->source_field_transferred,
+                            (string)($cfg->source_transfer_field_type ?? 'numeric')
+                        );
+                        $success++;
+                        mtrace('OK row id=' . $id . $logref . ' status=' . $status);
                     } else {
                         $failed++;
                         mtrace('FAIL row id=' . $id . $logref . ' status=' . $status);
@@ -112,21 +114,24 @@ class transfer_task extends \core\task\scheduled_task {
                     mtrace('FAIL row id=' . $id . $logref . ' exception=' . $e->getMessage());
                 }
             }
+
         } finally {
-            if ($target) {
+            if ($target !== null) {
                 try {
                     $target->disconnect();
                 } catch (\Throwable $e) {
                     mtrace('Target disconnect warning: ' . $e->getMessage());
                 }
             }
-            if ($source) {
+
+            if ($source !== null) {
                 try {
                     $source->disconnect();
                 } catch (\Throwable $e) {
                     mtrace('Source disconnect warning: ' . $e->getMessage());
                 }
             }
+
             mtrace('Run complete: success=' . $success . ' failed=' . $failed);
         }
     }
@@ -185,6 +190,7 @@ class transfer_task extends \core\task\scheduled_task {
             'name' => $cfg->remote_procedure_db_name ?? '',
             'user' => $cfg->remote_procedure_db_user ?? '',
             'pass' => $cfg->remote_procedure_db_pass ?? '',
+            'dsn' => $cfg->remote_procedure_db_dsn ?? '',
         ];
     }
 
@@ -195,33 +201,58 @@ class transfer_task extends \core\task\scheduled_task {
      * @param array $mapping Mapping rows.
      * @return array
      */
-     private function build_in_params(\stdClass $row, array $mapping): array {
-         $params = [];
+    private function build_in_params(\stdClass $row, array $mapping): array {
+        $params = [];
 
-         foreach ($mapping as $map) {
-             if (($map['direction'] ?? 'in') !== 'in') {
-                 continue;
-             }
+        foreach ($mapping as $map) {
+            if (($map['direction'] ?? 'in') !== 'in') {
+                continue;
+            }
 
-             $paramname = trim((string)($map['param_name'] ?? ''));
-             if ($paramname === '') {
-                 throw new \moodle_exception('Input parameter has no stored procedure parameter name configured.');
-             }
+            $paramname = trim((string)($map['param_name'] ?? ''));
+            if ($paramname === '') {
+                throw new \moodle_exception('Input parameter has no stored procedure parameter name configured.');
+            }
 
-             $sourcecolumn = trim((string)($map['source_column'] ?? ''));
-             if ($sourcecolumn === '') {
-                 throw new \moodle_exception('Input parameter has no source column configured: ' . s($paramname));
-             }
+            $sourcecolumn = trim((string)($map['source_column'] ?? ''));
+            if ($sourcecolumn === '') {
+                throw new \moodle_exception('Input parameter has no source column configured: ' . s($paramname));
+            }
 
-             $params[$paramname] = $this->row_value($row, $sourcecolumn);
-         }
+            $params[$paramname] = $this->row_value($row, $sourcecolumn);
+        }
 
-         if (empty($params)) {
-             throw new \moodle_exception('No input parameters configured for procedure call.');
-         }
+        if (empty($params)) {
+            throw new \moodle_exception('No input parameters configured for procedure call.');
+        }
 
-         return $params;
-     }
+        return $params;
+    }
+
+    /**
+     * Return configured output parameter from mapping rows.
+     *
+     * @param array $mapping Mapping rows.
+     * @return array
+     */
+    private function configured_output_parameter(array $mapping): array {
+        foreach ($mapping as $map) {
+            if (($map['direction'] ?? 'in') === 'out') {
+                $paramname = trim((string)($map['param_name'] ?? ''));
+
+                if ($paramname === '') {
+                    throw new \moodle_exception('Output parameter has no stored procedure parameter name configured.');
+                }
+
+                return [
+                    'param_name' => $paramname,
+                    'data_type' => trim((string)($map['data_type'] ?? 'nvarchar')),
+                ];
+            }
+        }
+
+        throw new \moodle_exception('No output parameter configured for procedure call.');
+    }
 
     /**
      * Read mapping rows from JSON config, falling back to legacy textarea.

@@ -17,13 +17,13 @@ defined('MOODLE_INTERNAL') || die();
  *     @param2 = ?,
  *     ...
  *
- * The procedure OUTPUT parameter is handled using a local SQL variable:
+ * The configured OUTPUT parameter from the mapping page is handled using a local SQL variable:
  *
- * DECLARE @status NVARCHAR(255);
+ * DECLARE @localstatus NVARCHAR(255);
  * EXEC dbo.procname
  *     @param1 = ?,
- *     @STATUS = @status OUTPUT;
- * SELECT @status AS status;
+ *     @ConfiguredOutputParam = @localstatus OUTPUT;
+ * SELECT @localstatus AS status;
  *
  * @package    local_results_transfer
  * @copyright  2026
@@ -109,34 +109,55 @@ class odbc_target_driver implements driver_interface {
      *     ...
      * ]
      *
+     * $outparam is read from the mapping page output row, for example:
+     *
+     * [
+     *     'param_name' => 'STATUS',
+     *     'data_type' => 'nvarchar',
+     * ]
+     *
      * This driver calls SQL Server using:
      *
-     * DECLARE @status NVARCHAR(255);
+     * DECLARE @localstatus NVARCHAR(255);
      * EXEC procname
      *     @associationId = ?,
      *     @role = ?,
      *     ...
-     *     @STATUS = @status OUTPUT;
-     * SELECT @status AS status;
+     *     @STATUS = @localstatus OUTPUT;
+     * SELECT @localstatus AS status;
      *
      * If a numeric array is passed, it falls back to positional placeholders,
-     * but still appends @STATUS = @status OUTPUT.
+     * but still appends the configured output parameter.
      *
      * @param string $procname Procedure name.
      * @param array $inparams Input params.
+     * @param array|null $outparam Output parameter config.
      * @return string Returned status.
      */
-    public function call_procedure(string $procname, array $inparams): string {
+    public function call_procedure(string $procname, array $inparams, ?array $outparam = null): string {
         $this->require_connection();
 
         if (empty($inparams)) {
             throw new \moodle_exception('ODBC procedure call has no input parameters.');
         }
 
+        if (empty($outparam)) {
+            $outparam = [
+                'param_name' => 'STATUS',
+                'data_type' => 'nvarchar',
+            ];
+        }
+
+        $outname = $this->clean_param_name((string)($outparam['param_name'] ?? ''));
+        if ($outname === '') {
+            throw new \moodle_exception('ODBC procedure call has no output parameter name configured.');
+        }
+
+        $outtype = $this->sql_declare_type((string)($outparam['data_type'] ?? 'nvarchar'));
         $isassoc = $this->is_assoc($inparams);
         $values = [];
 
-        $sql = 'DECLARE @status NVARCHAR(255); ';
+        $sql = 'DECLARE @localstatus ' . $outtype . '; ';
         $sql .= 'EXEC ' . $procname . ' ';
 
         if ($isassoc) {
@@ -153,8 +174,8 @@ class odbc_target_driver implements driver_interface {
                 $values[] = $value;
             }
 
-            // Required SQL Server output parameter.
-            $assignments[] = '@STATUS = @status OUTPUT';
+            // Required SQL Server output parameter, using the configured OUT mapping row.
+            $assignments[] = '@' . $outname . ' = @localstatus OUTPUT';
 
             $sql .= implode(', ', $assignments);
         } else {
@@ -165,14 +186,14 @@ class odbc_target_driver implements driver_interface {
                 $values[] = $value;
             }
 
-            // Required SQL Server output parameter.
-            $parts[] = '@STATUS = @status OUTPUT';
+            // Required SQL Server output parameter, using the configured OUT mapping row.
+            $parts[] = '@' . $outname . ' = @localstatus OUTPUT';
 
             $sql .= implode(', ', $parts);
         }
 
         // Return OUTPUT value as a result set so PHP ODBC can read it reliably.
-        $sql .= '; SELECT @status AS status';
+        $sql .= '; SELECT @localstatus AS status';
 
         $stmt = @odbc_prepare($this->conn, $sql);
 
@@ -246,7 +267,7 @@ class odbc_target_driver implements driver_interface {
      *
      * Expected result:
      *
-     * SELECT @status AS status;
+     * SELECT @localstatus AS status;
      *
      * @param resource $stmt ODBC statement.
      * @return string
@@ -284,6 +305,33 @@ class odbc_target_driver implements driver_interface {
 
         // Keep only normal SQL parameter-name characters.
         return preg_replace('/[^A-Za-z0-9_]/', '', $name);
+    }
+
+    /**
+     * Convert mapping data type into SQL Server DECLARE type for output variable.
+     *
+     * @param string $type Configured data type.
+     * @return string SQL Server type.
+     */
+    private function sql_declare_type(string $type): string {
+        $type = strtolower(trim($type));
+
+        switch ($type) {
+            case 'varchar':
+                return 'VARCHAR(255)';
+            case 'nvarchar':
+                return 'NVARCHAR(255)';
+            case 'int':
+                return 'INT';
+            case 'decimal':
+                return 'DECIMAL(18,5)';
+            case 'datetime':
+                return 'DATETIME';
+            case 'text':
+                return 'NVARCHAR(MAX)';
+            default:
+                return 'NVARCHAR(255)';
+        }
     }
 
     /**
