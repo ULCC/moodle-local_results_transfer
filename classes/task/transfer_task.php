@@ -195,28 +195,33 @@ class transfer_task extends \core\task\scheduled_task {
      * @param array $mapping Mapping rows.
      * @return array
      */
-    private function build_in_params(\stdClass $row, array $mapping): array {
-        $params = [];
+     private function build_in_params(\stdClass $row, array $mapping): array {
+         $params = [];
 
-        foreach ($mapping as $map) {
-            if (($map['direction'] ?? 'in') !== 'in') {
-                continue;
-            }
+         foreach ($mapping as $map) {
+             if (($map['direction'] ?? 'in') !== 'in') {
+                 continue;
+             }
 
-            $sourcecolumn = trim((string)($map['source_column'] ?? ''));
-            if ($sourcecolumn === '') {
-                throw new \moodle_exception('Input parameter has no source column configured: ' . s($map['param_name'] ?? ''));
-            }
+             $paramname = trim((string)($map['param_name'] ?? ''));
+             if ($paramname === '') {
+                 throw new \moodle_exception('Input parameter has no stored procedure parameter name configured.');
+             }
 
-            $params[] = $this->row_value($row, $sourcecolumn);
-        }
+             $sourcecolumn = trim((string)($map['source_column'] ?? ''));
+             if ($sourcecolumn === '') {
+                 throw new \moodle_exception('Input parameter has no source column configured: ' . s($paramname));
+             }
 
-        if (empty($params)) {
-            throw new \moodle_exception('No input parameters configured for procedure call.');
-        }
+             $params[$paramname] = $this->row_value($row, $sourcecolumn);
+         }
 
-        return $params;
-    }
+         if (empty($params)) {
+             throw new \moodle_exception('No input parameters configured for procedure call.');
+         }
+
+         return $params;
+     }
 
     /**
      * Read mapping rows from JSON config, falling back to legacy textarea.
